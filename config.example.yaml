@@ -1,0 +1,36 @@
+# How often to poll each box (seconds). Default: 300 (5 minutes).
+# Set lower if you need tighter log coverage; the Fritz!Box buffer holds ~500 entries.
+poll_interval_seconds: 300
+
+boxes:
+  # Each entry is one Fritz!Box or mesh satellite to poll independently.
+  # The name is used as the `box` column in SQLite and in Prometheus label values.
+  - name: HWR
+    host: 192.168.178.1       # IP address of the Fritz!Box
+    user: syslog-user         # Fritz!Box user with TR-064 / device-info access
+    password: changeme
+
+  - name: Arbeitszimmer
+    host: 192.168.178.60
+    user: syslog-user
+    password: changeme
+
+  # Add more mesh satellites here as needed.
+  # - name: Wohnzimmer
+  #   host: 192.168.178.53
+  #   user: syslog-user
+  #   password: changeme
+
+output:
+  # Path to the SQLite database file inside the container.
+  # Mount a named volume here so data survives container restarts.
+  sqlite_path: /data/fritzlog.db
+
+  # Write each new (deduplicated) log entry to stdout as a JSON object.
+  # One line per entry. Useful for Grafana Alloy → Loki ingestion via
+  # Docker log collection. Default: false.
+  stdout_json: false
+
+  # Expose a Prometheus /metrics endpoint on this port.
+  # Omit or set to 0 to disable. Default: disabled.
+  # prometheus_port: 9877

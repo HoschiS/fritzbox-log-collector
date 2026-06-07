@@ -1,15 +1,15 @@
 """Integration tests for the poll loop logic in __main__.py."""
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import MagicMock, patch
 
 import pytest
 from prometheus_client import CollectorRegistry
 
+from fritzlog.__main__ import poll_all_boxes
 from fritzlog.config import BoxConfig, Config, OutputConfig
 from fritzlog.output import Metrics
 from fritzlog.store import Store
-from fritzlog.__main__ import poll_all_boxes
 
 
 @pytest.fixture
@@ -37,7 +37,7 @@ def _mock_poll(entries: list[tuple[datetime, str]]) -> MagicMock:
 def test_new_entries_are_stored(store: Store, metrics: Metrics) -> None:
     box = BoxConfig(name="HWR", host="192.168.178.1", user="u", password="p")
     cfg = _make_config([box])
-    collected = datetime(2026, 6, 7, 10, 25, 0, tzinfo=timezone.utc)
+    collected = datetime(2026, 6, 7, 10, 25, 0, tzinfo=UTC)
     entries = [(datetime(2026, 6, 7, 10, 0, 0), "Meldung A")]
 
     with patch("fritzlog.__main__.poll", return_value=entries):
@@ -51,7 +51,7 @@ def test_new_entries_are_stored(store: Store, metrics: Metrics) -> None:
 def test_duplicate_entries_not_stored_twice(store: Store, metrics: Metrics) -> None:
     box = BoxConfig(name="HWR", host="192.168.178.1", user="u", password="p")
     cfg = _make_config([box])
-    collected = datetime(2026, 6, 7, 10, 25, 0, tzinfo=timezone.utc)
+    collected = datetime(2026, 6, 7, 10, 25, 0, tzinfo=UTC)
     entries = [(datetime(2026, 6, 7, 10, 0, 0), "Meldung A")]
 
     with patch("fritzlog.__main__.poll", return_value=entries):
@@ -69,7 +69,7 @@ def test_poll_failure_logs_warning_and_continues(
     box_ok = BoxConfig(name="HWR", host="192.168.178.1", user="u", password="p")
     box_fail = BoxConfig(name="Offline", host="192.168.178.99", user="u", password="p")
     cfg = _make_config([box_fail, box_ok])
-    collected = datetime(2026, 6, 7, 10, 25, 0, tzinfo=timezone.utc)
+    collected = datetime(2026, 6, 7, 10, 25, 0, tzinfo=UTC)
 
     def side_effect(box: BoxConfig) -> list[tuple[datetime, str]]:
         if box.name == "Offline":

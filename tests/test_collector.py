@@ -1,8 +1,6 @@
 from datetime import datetime
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from fritzlog.collector import parse_log_line, poll
 from fritzlog.config import BoxConfig
 

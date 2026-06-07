@@ -1,5 +1,4 @@
-import sqlite3
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 
@@ -32,7 +31,7 @@ def test_schema_created_on_init(store: Store) -> None:
 
 def test_insert_new_entry_persists(store: Store) -> None:
     ts = datetime(2026, 6, 7, 10, 23, 17)
-    collected = datetime(2026, 6, 7, 10, 25, 0, tzinfo=timezone.utc)
+    collected = datetime(2026, 6, 7, 10, 25, 0, tzinfo=UTC)
 
     store.insert("HWR", ts, "Internetverbindung hergestellt.", collected)
 
@@ -49,7 +48,7 @@ def test_insert_new_entry_persists(store: Store) -> None:
 
 def test_duplicate_entry_is_ignored(store: Store) -> None:
     ts = datetime(2026, 6, 7, 10, 23, 17)
-    collected = datetime(2026, 6, 7, 10, 25, 0, tzinfo=timezone.utc)
+    collected = datetime(2026, 6, 7, 10, 25, 0, tzinfo=UTC)
 
     first = store.insert("HWR", ts, "Verbindung hergestellt.", collected)
     second = store.insert("HWR", ts, "Verbindung hergestellt.", collected)
@@ -64,7 +63,7 @@ def test_duplicate_entry_is_ignored(store: Store) -> None:
 
 def test_same_entry_different_boxes_both_stored(store: Store) -> None:
     ts = datetime(2026, 6, 7, 10, 23, 17)
-    collected = datetime(2026, 6, 7, 10, 25, 0, tzinfo=timezone.utc)
+    collected = datetime(2026, 6, 7, 10, 25, 0, tzinfo=UTC)
 
     store.insert("HWR", ts, "WLAN-Gerät angemeldet.", collected)
     store.insert("Arbeitszimmer", ts, "WLAN-Gerät angemeldet.", collected)
@@ -75,7 +74,7 @@ def test_same_entry_different_boxes_both_stored(store: Store) -> None:
 
 
 def test_most_recent_timestamp_returns_latest(store: Store) -> None:
-    collected = datetime(2026, 6, 7, 10, 25, 0, tzinfo=timezone.utc)
+    collected = datetime(2026, 6, 7, 10, 25, 0, tzinfo=UTC)
     store.insert("HWR", datetime(2026, 6, 7, 9, 0, 0), "older", collected)
     store.insert("HWR", datetime(2026, 6, 7, 10, 0, 0), "newer", collected)
 
@@ -89,7 +88,7 @@ def test_most_recent_timestamp_none_when_empty(store: Store) -> None:
 
 
 def test_most_recent_timestamp_scoped_to_box(store: Store) -> None:
-    collected = datetime(2026, 6, 7, 10, 25, 0, tzinfo=timezone.utc)
+    collected = datetime(2026, 6, 7, 10, 25, 0, tzinfo=UTC)
     store.insert("HWR", datetime(2026, 6, 7, 10, 0, 0), "msg", collected)
     store.insert("Arbeitszimmer", datetime(2026, 6, 7, 11, 0, 0), "msg", collected)
 

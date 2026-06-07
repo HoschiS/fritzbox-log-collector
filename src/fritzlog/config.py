@@ -1,6 +1,5 @@
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
 
 import yaml
 
@@ -31,7 +30,7 @@ class Config:
     poll_interval_seconds: int = 300
 
 
-def _parse_box(raw: Any, index: int) -> BoxConfig:
+def _parse_box(raw: dict[str, object], index: int) -> BoxConfig:
     for key in ("name", "host", "user", "password"):
         if key not in raw:
             raise ConfigError(f"boxes[{index}] missing required field '{key}'")
@@ -43,7 +42,7 @@ def _parse_box(raw: Any, index: int) -> BoxConfig:
     )
 
 
-def _parse_output(raw: Any) -> OutputConfig:
+def _parse_output(raw: dict[str, object]) -> OutputConfig:
     if "sqlite_path" not in raw:
         raise ConfigError("output.sqlite_path is required")
     return OutputConfig(

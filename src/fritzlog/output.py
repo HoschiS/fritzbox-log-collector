@@ -1,11 +1,12 @@
 import json
 from datetime import datetime
-from typing import Optional
 
 from prometheus_client import CollectorRegistry, Counter, Gauge, start_http_server
 
 
-def format_entry_as_json(box: str, timestamp: datetime, message: str, collected_at: datetime) -> str:
+def format_entry_as_json(
+    box: str, timestamp: datetime, message: str, collected_at: datetime
+) -> str:
     return json.dumps(
         {
             "box": box,
@@ -21,7 +22,7 @@ def write_entry(box: str, timestamp: datetime, message: str, collected_at: datet
 
 
 class Metrics:
-    def __init__(self, registry: Optional[CollectorRegistry]) -> None:
+    def __init__(self, registry: CollectorRegistry | None) -> None:
         reg = registry if registry is not None else CollectorRegistry()
         self._entries_total = Counter(
             "fritzlog_entries",

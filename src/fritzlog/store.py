@@ -1,8 +1,8 @@
 import sqlite3
+from collections.abc import Generator
 from contextlib import contextmanager
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
-from typing import Generator
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS logs (
@@ -34,7 +34,8 @@ class Store:
         ts_iso = timestamp.strftime("%Y-%m-%dT%H:%M:%S")
         collected_iso = collected_at.strftime("%Y-%m-%dT%H:%M:%SZ")
         cursor = self._conn.execute(
-            "INSERT OR IGNORE INTO logs (box, timestamp, message, collected_at) VALUES (?, ?, ?, ?)",
+            "INSERT OR IGNORE INTO logs (box, timestamp, message, collected_at)"
+            " VALUES (?, ?, ?, ?)",
             (box, ts_iso, message, collected_iso),
         )
         self._conn.commit()

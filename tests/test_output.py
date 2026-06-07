@@ -1,9 +1,9 @@
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from prometheus_client import CollectorRegistry, generate_latest
 
-from fritzlog.output import format_entry_as_json, Metrics
+from fritzlog.output import Metrics, format_entry_as_json
 
 
 def _metric_value(registry: CollectorRegistry, name: str, box: str) -> float:
@@ -16,7 +16,7 @@ def _metric_value(registry: CollectorRegistry, name: str, box: str) -> float:
 
 def test_format_entry_as_json_structure() -> None:
     ts = datetime(2026, 6, 7, 10, 23, 17)
-    collected = datetime(2026, 6, 7, 10, 25, 1, tzinfo=timezone.utc)
+    collected = datetime(2026, 6, 7, 10, 25, 1, tzinfo=UTC)
 
     line = format_entry_as_json("HWR", ts, "Internetverbindung hergestellt.", collected)
     obj = json.loads(line)
@@ -30,7 +30,7 @@ def test_format_entry_as_json_structure() -> None:
 def test_metrics_record_successful_poll() -> None:
     reg = CollectorRegistry()
     metrics = Metrics(registry=reg)
-    now = datetime(2026, 6, 7, 10, 25, 1, tzinfo=timezone.utc)
+    now = datetime(2026, 6, 7, 10, 25, 1, tzinfo=UTC)
 
     metrics.record_poll_success("HWR", entries_added=3, timestamp=now)
 
@@ -52,7 +52,7 @@ def test_metrics_record_failed_poll() -> None:
 def test_metrics_record_gap_detected() -> None:
     reg = CollectorRegistry()
     metrics = Metrics(registry=reg)
-    now = datetime(2026, 6, 7, 10, 25, 1, tzinfo=timezone.utc)
+    now = datetime(2026, 6, 7, 10, 25, 1, tzinfo=UTC)
 
     metrics.record_poll_success("HWR", entries_added=0, timestamp=now, gap_detected=True)
 
@@ -62,7 +62,7 @@ def test_metrics_record_gap_detected() -> None:
 def test_metrics_accumulate_entries_across_polls() -> None:
     reg = CollectorRegistry()
     metrics = Metrics(registry=reg)
-    now = datetime(2026, 6, 7, 10, 25, 1, tzinfo=timezone.utc)
+    now = datetime(2026, 6, 7, 10, 25, 1, tzinfo=UTC)
 
     metrics.record_poll_success("HWR", entries_added=5, timestamp=now)
     metrics.record_poll_success("HWR", entries_added=2, timestamp=now)
