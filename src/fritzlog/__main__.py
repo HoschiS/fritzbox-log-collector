@@ -1,6 +1,7 @@
 import logging
+import signal
 import sys
-import time
+import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import UTC, datetime
 from pathlib import Path
@@ -58,6 +59,20 @@ def poll_all_boxes(
             )
 
 
+def run_loop(
+    cfg: Config,
+    store: Store,
+    metrics: Metrics,
+    *,
+    shutdown: threading.Event,
+    poll_interval: int,
+) -> None:
+    while not shutdown.is_set():
+        now = datetime.now(tz=UTC)
+        poll_all_boxes(cfg, store, metrics, now=now)
+        shutdown.wait(timeout=poll_interval)
+
+
 def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     # fritzconnection logs connection errors at ERROR before raising — we re-log them as
@@ -79,16 +94,18 @@ def main() -> None:
         metrics.start_server(cfg.output.prometheus_port)
         logger.info("Prometheus metrics available on port %d", cfg.output.prometheus_port)
 
+    shutdown = threading.Event()
+    signal.signal(signal.SIGTERM, lambda *_: shutdown.set())
+    signal.signal(signal.SIGINT, lambda *_: shutdown.set())
+
     logger.info(
         "Starting fritzlog: %d box(es), polling every %ds",
         len(cfg.boxes),
         cfg.poll_interval_seconds,
     )
 
-    while True:
-        now = datetime.now(tz=UTC)
-        poll_all_boxes(cfg, store, metrics, now=now)
-        time.sleep(cfg.poll_interval_seconds)
+    run_loop(cfg, store, metrics, shutdown=shutdown, poll_interval=cfg.poll_interval_seconds)
+    logger.info("Shutdown complete.")
 
 
 if __name__ == "__main__":

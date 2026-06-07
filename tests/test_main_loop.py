@@ -2,6 +2,7 @@
 import concurrent.futures
 import logging
 import threading
+import time
 from datetime import UTC, datetime
 from unittest.mock import patch
 
@@ -133,3 +134,30 @@ def test_boxes_polled_concurrently(store: Store, metrics: Metrics) -> None:
     with store.connection() as conn:
         count = conn.execute("SELECT COUNT(*) FROM logs WHERE box='B'").fetchone()[0]
     assert count == 1
+
+
+def test_shutdown_event_interrupts_sleep(store: Store, metrics: Metrics) -> None:
+    """Setting the shutdown event must unblock the inter-poll sleep immediately."""
+    from fritzlog.__main__ import run_loop
+
+    box = BoxConfig(name="HWR", host="192.168.178.1", user="u", password="p")
+    cfg = _make_config([box])
+    shutdown = threading.Event()
+    entries: list[tuple[datetime, str]] = []
+
+    poll_count = 0
+
+    def counting_poll(b: BoxConfig) -> list[tuple[datetime, str]]:
+        nonlocal poll_count
+        poll_count += 1
+        if poll_count == 1:
+            shutdown.set()  # trigger shutdown after first poll
+        return entries
+
+    with patch("fritzlog.__main__.poll", side_effect=counting_poll):
+        start = time.monotonic()
+        run_loop(cfg, store, metrics, shutdown=shutdown, poll_interval=60)
+        elapsed = time.monotonic() - start
+
+    assert poll_count == 1
+    assert elapsed < 5, f"Loop took {elapsed:.1f}s — shutdown did not interrupt the 60s sleep"
