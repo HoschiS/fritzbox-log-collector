@@ -50,6 +50,9 @@ def poll_all_boxes(
 
 def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+    # fritzconnection logs connection errors at ERROR before raising — we re-log them as
+    # WARNING ourselves, so suppress the library's own output to avoid duplicate lines.
+    logging.getLogger("fritzconnection").setLevel(logging.CRITICAL)
 
     config_path = Path(sys.argv[1]) if len(sys.argv) > 1 else Path("/config/config.yaml")
 
