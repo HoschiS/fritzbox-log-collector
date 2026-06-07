@@ -30,25 +30,38 @@ class Config:
     poll_interval_seconds: int = 300
 
 
+def _require_str(mapping: dict[str, object], key: str, context: str) -> str:
+    value = mapping.get(key)
+    if not isinstance(value, str) or not value:
+        raise ConfigError(f"{context} must be a non-empty string")
+    return value
+
+
 def _parse_box(raw: dict[str, object], index: int) -> BoxConfig:
+    ctx = f"boxes[{index}]"
     for key in ("name", "host", "user", "password"):
         if key not in raw:
-            raise ConfigError(f"boxes[{index}] missing required field '{key}'")
+            raise ConfigError(f"{ctx} missing required field '{key}'")
     return BoxConfig(
-        name=raw["name"],
-        host=raw["host"],
-        user=raw["user"],
-        password=raw["password"],
+        name=_require_str(raw, "name", f"{ctx}.name"),
+        host=_require_str(raw, "host", f"{ctx}.host"),
+        user=_require_str(raw, "user", f"{ctx}.user"),
+        password=_require_str(raw, "password", f"{ctx}.password"),
     )
 
 
 def _parse_output(raw: dict[str, object]) -> OutputConfig:
-    if "sqlite_path" not in raw:
-        raise ConfigError("output.sqlite_path is required")
+    sqlite_path = _require_str(raw, "sqlite_path", "output.sqlite_path")
+    stdout_json = raw.get("stdout_json", False)
+    if not isinstance(stdout_json, bool):
+        raise ConfigError("output.stdout_json must be a boolean")
+    prometheus_port = raw.get("prometheus_port", 0)
+    if not isinstance(prometheus_port, int):
+        raise ConfigError("output.prometheus_port must be an integer")
     return OutputConfig(
-        sqlite_path=raw["sqlite_path"],
-        stdout_json=raw.get("stdout_json", False),
-        prometheus_port=raw.get("prometheus_port", 0),
+        sqlite_path=sqlite_path,
+        stdout_json=stdout_json,
+        prometheus_port=prometheus_port,
     )
 
 
@@ -74,5 +87,7 @@ def load_config(path: str | Path) -> Config:
     boxes = [_parse_box(b, i) for i, b in enumerate(raw["boxes"])]
     output = _parse_output(raw["output"])
     poll_interval = raw.get("poll_interval_seconds", 300)
+    if not isinstance(poll_interval, int):
+        raise ConfigError("poll_interval_seconds must be an integer")
 
     return Config(boxes=boxes, output=output, poll_interval_seconds=poll_interval)
