@@ -1,11 +1,12 @@
 import logging
 import sys
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import UTC, datetime
 from pathlib import Path
 
 from fritzlog.collector import poll
-from fritzlog.config import Config, ConfigError, load_config
+from fritzlog.config import BoxConfig, Config, ConfigError, load_config
 from fritzlog.gap_detection import detect_gap
 from fritzlog.output import Metrics, write_entry
 from fritzlog.store import Store
@@ -20,32 +21,41 @@ def poll_all_boxes(
     *,
     now: datetime,
 ) -> None:
-    for box in cfg.boxes:
+    def _poll_box(box: BoxConfig) -> list[tuple[datetime, str]]:
         logger.info("Polling %s (%s)…", box.name, box.host)
-        try:
-            entries = poll(box)
-        except Exception as exc:
-            logger.warning("Poll failed for box %r: %s", box.name, exc)
-            metrics.record_poll_failure(box.name)
-            continue
+        return poll(box)
 
-        last_stored = store.most_recent_timestamp(box.name)
-        gap = detect_gap(entries, last_stored=last_stored)
-        if gap:
-            logger.warning(
-                "Buffer gap detected for box %r — entries may have been lost", box.name
+    with ThreadPoolExecutor(max_workers=len(cfg.boxes)) as executor:
+        futures = {executor.submit(_poll_box, box): box for box in cfg.boxes}
+
+        for future in as_completed(futures):
+            box = futures[future]
+            try:
+                entries = future.result()
+            except Exception as exc:
+                logger.warning("Poll failed for box %r: %s", box.name, exc)
+                metrics.record_poll_failure(box.name)
+                continue
+
+            last_stored = store.most_recent_timestamp(box.name)
+            gap = detect_gap(entries, last_stored=last_stored)
+            if gap:
+                logger.warning(
+                    "Buffer gap detected for box %r — entries may have been lost", box.name
+                )
+
+            added = 0
+            for ts, message in entries:
+                inserted = store.insert(box.name, ts, message, now)
+                if inserted:
+                    added += 1
+                    if cfg.output.stdout_json:
+                        write_entry(box.name, ts, message, now)
+
+            logger.info("%s: %d new of %d entries in batch", box.name, added, len(entries))
+            metrics.record_poll_success(
+                box.name, entries_added=added, timestamp=now, gap_detected=gap
             )
-
-        added = 0
-        for ts, message in entries:
-            inserted = store.insert(box.name, ts, message, now)
-            if inserted:
-                added += 1
-                if cfg.output.stdout_json:
-                    write_entry(box.name, ts, message, now)
-
-        logger.info("%s: %d new of %d entries in batch", box.name, added, len(entries))
-        metrics.record_poll_success(box.name, entries_added=added, timestamp=now, gap_detected=gap)
 
 
 def main() -> None:

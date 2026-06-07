@@ -1,5 +1,7 @@
 """Integration tests for the poll loop logic in __main__.py."""
+import concurrent.futures
 import logging
+import threading
 from datetime import UTC, datetime
 from unittest.mock import patch
 
@@ -100,3 +102,34 @@ def test_successful_poll_logs_info(
     messages = " ".join(r.message for r in caplog.records)
     assert "HWR" in messages
     assert "2" in messages  # batch size or new count visible in log
+
+
+def test_boxes_polled_concurrently(store: Store, metrics: Metrics) -> None:
+    """A slow box must not block polling of other boxes."""
+    box_a = BoxConfig(name="A", host="192.168.178.1", user="u", password="p")
+    box_b = BoxConfig(name="B", host="192.168.178.2", user="u", password="p")
+    cfg = _make_config([box_a, box_b])
+    collected = datetime(2026, 6, 7, 10, 25, 0, tzinfo=UTC)
+
+    b_polled = threading.Event()
+    a_can_finish = threading.Event()
+
+    def side_effect(box: BoxConfig) -> list[tuple[datetime, str]]:
+        if box.name == "A":
+            a_can_finish.wait(timeout=2)
+            return []
+        b_polled.set()
+        return [(datetime(2026, 6, 7, 10, 0, 0), "entry from B")]
+
+    with patch("fritzlog.__main__.poll", side_effect=side_effect):
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as ex:
+            future = ex.submit(poll_all_boxes, cfg, store, metrics, now=collected)
+            b_was_polled = b_polled.wait(timeout=1)
+            a_can_finish.set()
+            future.result()
+
+    assert b_was_polled, "Box B was not polled while Box A was blocking — polls are not concurrent"
+
+    with store.connection() as conn:
+        count = conn.execute("SELECT COUNT(*) FROM logs WHERE box='B'").fetchone()[0]
+    assert count == 1
