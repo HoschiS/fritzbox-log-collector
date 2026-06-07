@@ -1,7 +1,7 @@
 """Integration tests for the poll loop logic in __main__.py."""
 import logging
 from datetime import UTC, datetime
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 from prometheus_client import CollectorRegistry
@@ -27,11 +27,6 @@ def _make_config(boxes: list[BoxConfig], stdout_json: bool = False) -> Config:
         boxes=boxes,
         output=OutputConfig(sqlite_path=":memory:", stdout_json=stdout_json),
     )
-
-
-def _mock_poll(entries: list[tuple[datetime, str]]) -> MagicMock:
-    m = MagicMock(return_value=entries)
-    return m
 
 
 def test_new_entries_are_stored(store: Store, metrics: Metrics) -> None:
