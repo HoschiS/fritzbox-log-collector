@@ -14,6 +14,7 @@ class BoxConfig:
     host: str
     user: str
     password: str
+    timeout_seconds: int | None = None
 
 
 @dataclass
@@ -42,11 +43,15 @@ def _parse_box(raw: dict[str, object], index: int) -> BoxConfig:
     for key in ("name", "host", "user", "password"):
         if key not in raw:
             raise ConfigError(f"{ctx} missing required field '{key}'")
+    timeout_seconds = raw.get("timeout_seconds")
+    if timeout_seconds is not None and not isinstance(timeout_seconds, int):
+        raise ConfigError(f"{ctx}.timeout_seconds must be an integer")
     return BoxConfig(
         name=_require_str(raw, "name", f"{ctx}.name"),
         host=_require_str(raw, "host", f"{ctx}.host"),
         user=_require_str(raw, "user", f"{ctx}.user"),
         password=_require_str(raw, "password", f"{ctx}.password"),
+        timeout_seconds=timeout_seconds if isinstance(timeout_seconds, int) else None,
     )
 
 

@@ -21,6 +21,15 @@ boxes:
   #   user: syslog-user
   #   password: changeme
 
+  # timeout_seconds: per-box TR-064 connection timeout in seconds.
+  # Overrides the built-in default of 10s. Useful for slow or remote satellites
+  # where you expect longer latency, or to fail faster on unreachable boxes.
+  # - name: Chrissi
+  #   host: 192.168.178.17
+  #   user: syslog-user
+  #   password: changeme
+  #   timeout_seconds: 3
+
 output:
   # Path to the SQLite database file inside the container.
   # Mount a named volume here so data survives container restarts.

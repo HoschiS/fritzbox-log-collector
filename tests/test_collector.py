@@ -55,3 +55,35 @@ def test_poll_skips_blank_lines() -> None:
 
     assert len(entries) == 1
     assert entries[0][1] == "Einzige Meldung."
+
+
+def test_poll_uses_per_box_timeout() -> None:
+    raw_log = "07.06.26 10:23:17 Meldung.\n"
+    mock_fc = MagicMock()
+    mock_fc.call_action.return_value = {"NewDeviceLog": raw_log}
+
+    box = BoxConfig(
+        name="Chrissi", host="192.168.178.17", user="u", password="p", timeout_seconds=3
+    )
+
+    with patch("fritzlog.collector.FritzConnection", return_value=mock_fc) as mock_cls:
+        poll(box)
+
+    mock_cls.assert_called_once_with(
+        address="192.168.178.17", user="u", password="p", timeout=3
+    )
+
+
+def test_poll_uses_default_timeout_when_not_set() -> None:
+    from fritzlog.collector import _CONNECT_TIMEOUT
+
+    raw_log = "07.06.26 10:23:17 Meldung.\n"
+    mock_fc = MagicMock()
+    mock_fc.call_action.return_value = {"NewDeviceLog": raw_log}
+
+    with patch("fritzlog.collector.FritzConnection", return_value=mock_fc) as mock_cls:
+        poll(_make_box())
+
+    mock_cls.assert_called_once_with(
+        address="192.168.178.1", user="u", password="p", timeout=_CONNECT_TIMEOUT
+    )

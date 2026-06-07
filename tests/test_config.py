@@ -147,3 +147,28 @@ def test_invalid_yaml_raises(tmp_path: Path) -> None:
     cfg_file.write_text("boxes: [unclosed")
     with pytest.raises(ConfigError, match="Invalid YAML"):
         load_config(cfg_file)
+
+
+def test_per_box_timeout_optional(tmp_path: Path) -> None:
+    cfg_file = write_yaml(
+        tmp_path,
+        """
+        boxes:
+          - name: HWR
+            host: 192.168.178.1
+            user: syslog-user
+            password: secret
+          - name: Chrissi
+            host: 192.168.178.17
+            user: syslog-user
+            password: secret
+            timeout_seconds: 3
+        output:
+          sqlite_path: /data/fritzlog.db
+        """,
+    )
+
+    cfg = load_config(cfg_file)
+
+    assert cfg.boxes[0].timeout_seconds is None   # uses collector default
+    assert cfg.boxes[1].timeout_seconds == 3
