@@ -85,3 +85,23 @@ def test_poll_failure_logs_warning_and_continues(
     with store.connection() as conn:
         count = conn.execute("SELECT COUNT(*) FROM logs").fetchone()[0]
     assert count == 1
+
+
+def test_successful_poll_logs_info(
+    store: Store, metrics: Metrics, caplog: pytest.LogCaptureFixture
+) -> None:
+    box = BoxConfig(name="HWR", host="192.168.178.1", user="u", password="p")
+    cfg = _make_config([box])
+    collected = datetime(2026, 6, 7, 10, 25, 0, tzinfo=UTC)
+    entries = [
+        (datetime(2026, 6, 7, 10, 0, 0), "Meldung A"),
+        (datetime(2026, 6, 7, 10, 1, 0), "Meldung B"),
+    ]
+
+    with caplog.at_level(logging.INFO):
+        with patch("fritzlog.__main__.poll", return_value=entries):
+            poll_all_boxes(cfg, store, metrics, now=collected)
+
+    messages = " ".join(r.message for r in caplog.records)
+    assert "HWR" in messages
+    assert "2" in messages  # batch size or new count visible in log

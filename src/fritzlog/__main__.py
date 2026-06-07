@@ -1,15 +1,14 @@
 import logging
 import sys
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from fritzlog.collector import poll
-from fritzlog.config import ConfigError, load_config
+from fritzlog.config import Config, ConfigError, load_config
 from fritzlog.gap_detection import detect_gap
 from fritzlog.output import Metrics, write_entry
 from fritzlog.store import Store
-from fritzlog.config import Config
 
 logger = logging.getLogger(__name__)
 
@@ -22,6 +21,7 @@ def poll_all_boxes(
     now: datetime,
 ) -> None:
     for box in cfg.boxes:
+        logger.info("Polling %s (%s)…", box.name, box.host)
         try:
             entries = poll(box)
         except Exception as exc:
@@ -44,6 +44,7 @@ def poll_all_boxes(
                 if cfg.output.stdout_json:
                     write_entry(box.name, ts, message, now)
 
+        logger.info("%s: %d new of %d entries in batch", box.name, added, len(entries))
         metrics.record_poll_success(box.name, entries_added=added, timestamp=now, gap_detected=gap)
 
 
@@ -72,7 +73,7 @@ def main() -> None:
     )
 
     while True:
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
         poll_all_boxes(cfg, store, metrics, now=now)
         time.sleep(cfg.poll_interval_seconds)
 

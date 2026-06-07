@@ -11,8 +11,13 @@ def parse_log_line(line: str) -> tuple[datetime, str]:
     return ts, message
 
 
+_CONNECT_TIMEOUT = 10.0  # seconds; Fritz!Box is LAN-local so 10s is generous
+
+
 def poll(box: BoxConfig) -> list[tuple[datetime, str]]:
-    fc = FritzConnection(address=box.host, user=box.user, password=box.password)
+    fc = FritzConnection(
+        address=box.host, user=box.user, password=box.password, timeout=_CONNECT_TIMEOUT
+    )
     raw: str = fc.call_action("DeviceInfo1", "GetDeviceLog")["NewDeviceLog"]
     lines = [line for line in raw.splitlines() if line.strip()]
     lines.reverse()
